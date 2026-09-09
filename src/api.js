@@ -67,6 +67,7 @@ async function requestWithProgress(path, fetchOptions, onProgress) {
 
 function uploadWithProgress(path, formData, onProgress) {
   return requestWithProgress(path, { method: "POST", body: formData }, onProgress);
+
 }
 
 function jsonWithProgress(path, body, onProgress) {

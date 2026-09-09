@@ -28,6 +28,7 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [busyProgress, setBusyProgress] = useState(null); // { done, total } | null
   const [url, setUrl] = useState("");
   const [uploadProductId, setUploadProductId] = useState("");
   const [crawlUrl, setCrawlUrl] = useState("");
@@ -89,18 +90,21 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
 
   const handleUpload = async (file) => {
     setBusy("upload");
+    setBusyProgress(null);
     setError("");
     setImportNotice("");
     try {
-      const result = await api.uploadKnowledge(file, {
-        companyId: company._id,
-        productId: uploadProductId || undefined,
-      });
+      const result = await api.uploadKnowledge(
+        file,
+        { companyId: company._id, productId: uploadProductId || undefined },
+        (p) => setBusyProgress(p)
+      );
       addProposals([{ ...result.proposal, productId: uploadProductId || null }]);
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy("");
+      setBusyProgress(null);
     }
   };
 
@@ -127,14 +131,14 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
   const handleCrawl = async () => {
     if (!crawlUrl.trim()) return;
     setBusy("crawl");
+    setBusyProgress(null);
     setError("");
     setImportNotice("");
     try {
-      const result = await api.crawlKnowledge({
-        companyId: company._id,
-        startUrl: crawlUrl.trim(),
-        maxPages: crawlMaxPages,
-      });
+      const result = await api.crawlKnowledge(
+        { companyId: company._id, startUrl: crawlUrl.trim(), maxPages: crawlMaxPages },
+        (p) => setBusyProgress(p)
+      );
       setProposalMeta({
         totalDiscovered: result.totalDiscovered,
         pagesFetched: result.pagesFetched,
@@ -145,6 +149,7 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
       setError(err.message);
     } finally {
       setBusy("");
+      setBusyProgress(null);
     }
   };
 
@@ -377,7 +382,23 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
             >
               {busy === "url" ? "Đang tải + lọc..." : "Lấy nội dung từ URL"}
             </button>
-            {busy === "upload" && <p className="empty">Đang trích xuất + lọc nội dung bằng AI...</p>}
+            {busy === "upload" && (
+              <div className="extract-progress">
+                <p className="empty">
+                  {busyProgress
+                    ? `Đang lọc nội dung bằng AI... (${busyProgress.done}/${busyProgress.total} đoạn)`
+                    : "Đang trích xuất nội dung..."}
+                </p>
+                {busyProgress && (
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${(busyProgress.done / busyProgress.total) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="manager-form upload-box crawl-box">
@@ -416,7 +437,21 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
               {busy === "crawl" ? "Đang quét + lọc..." : "Bắt đầu quét"}
             </button>
             {busy === "crawl" && (
-              <p className="empty">Đang tải + lọc từng trang bằng AI, có thể mất vài phút...</p>
+              <div className="extract-progress">
+                <p className="empty">
+                  {busyProgress
+                    ? `Đang lọc từng trang bằng AI... (${busyProgress.done}/${busyProgress.total} trang)`
+                    : "Đang tải danh sách trang..."}
+                </p>
+                {busyProgress && (
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${(busyProgress.done / busyProgress.total) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -524,6 +559,9 @@ export default function KnowledgeManager({ company, docs, setDocs, products, fil
                   )}
                 </div>
                 <div className="card-actions">
+                  <button type="button" onClick={() => setViewingDoc(d)}>
+                    Xem chi tiết
+                  </button>
                   <button type="button" onClick={() => reindex(d._id)} disabled={busy === d._id}>
                     {busy === d._id ? "..." : "Index lại"}
                   </button>

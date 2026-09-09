@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import StageFlowMap from "./StageFlowMap";
 
 const STAGES = [
   { value: "discovery", label: "Khám phá nhu cầu" },
@@ -27,6 +28,7 @@ export default function ScriptManager({ company, scripts, setScripts }) {
   const [saving, setSaving] = useState(false);
 
   const [extractBusy, setExtractBusy] = useState(false);
+  const [extractProgress, setExtractProgress] = useState(null); // { done, total } | null
   const [extractError, setExtractError] = useState("");
   const [proposals, setProposals] = useState(null); // null = chưa có đề xuất nào
   const [skipped, setSkipped] = useState([]);
@@ -36,6 +38,7 @@ export default function ScriptManager({ company, scripts, setScripts }) {
   const [stageFilter, setStageFilter] = useState(STAGE_ALL);
   const [typeFilter, setTypeFilter] = useState(TYPE_ALL);
   const [page, setPage] = useState(1);
+  const [view, setView] = useState("list"); // "list" | "flow"
 
   const resetForm = () => {
     setForm(empty);
@@ -98,17 +101,19 @@ export default function ScriptManager({ company, scripts, setScripts }) {
 
   const handleExtractFile = async (file) => {
     setExtractBusy(true);
+    setExtractProgress(null);
     setExtractError("");
     setProposals(null);
     setSkipped([]);
     try {
-      const result = await api.extractScripts(file, company._id);
+      const result = await api.extractScripts(file, company._id, (p) => setExtractProgress(p));
       setProposals(result.scripts.map((s) => ({ ...s, selected: true })));
       setSkipped(result.skipped || []);
     } catch (err) {
       setExtractError(err.message);
     } finally {
       setExtractBusy(false);
+      setExtractProgress(null);
     }
   };
 
@@ -268,7 +273,23 @@ export default function ScriptManager({ company, scripts, setScripts }) {
                 if (file) handleExtractFile(file);
               }}
             />
-            {extractBusy && <p className="empty">Đang đọc file và tách kịch bản...</p>}
+            {extractBusy && (
+              <div className="extract-progress">
+                <p className="empty">
+                  {extractProgress
+                    ? `Đang tách kịch bản... (${extractProgress.done}/${extractProgress.total} đoạn)`
+                    : "Đang đọc file..."}
+                </p>
+                {extractProgress && (
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${(extractProgress.done / extractProgress.total) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             {extractError && <p className="chat-error">{extractError}</p>}
           </div>
 
@@ -328,6 +349,35 @@ export default function ScriptManager({ company, scripts, setScripts }) {
         </div>
 
         <div className="manager-list">
+          <div className="sub-tab-bar">
+            <button
+              type="button"
+              className={view === "list" ? "active" : ""}
+              onClick={() => setView("list")}
+            >
+              Danh sách
+            </button>
+            <button
+              type="button"
+              className={view === "flow" ? "active" : ""}
+              onClick={() => setView("flow")}
+            >
+              Sơ đồ giai đoạn
+            </button>
+          </div>
+
+          {view === "flow" && (
+            <StageFlowMap
+              scripts={scripts}
+              company={company}
+              onEdit={edit}
+              onRemove={remove}
+              onCopyToCustomize={copyToCustomize}
+            />
+          )}
+
+          {view === "list" && (
+          <>
           <div className="knowledge-filter-bar">
             <input
               type="text"
@@ -414,6 +464,8 @@ export default function ScriptManager({ company, scripts, setScripts }) {
                 Sau →
               </button>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

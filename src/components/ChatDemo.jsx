@@ -13,6 +13,7 @@ const STAGE_LABELS = {
 const TOOL_LABELS = {
   searchProducts: "Tìm sản phẩm",
   getProductDetail: "Đọc tài liệu sản phẩm",
+  shareProductImage: "Gửi ảnh sản phẩm",
   searchCompanyKnowledge: "Tra tri thức công ty",
   updateLead: "Cập nhật phiếu khách",
   createOrder: "Tạo đơn nháp",
@@ -107,6 +108,7 @@ export default function ChatDemo({ company }) {
           id: `${i}-${m.role}`,
           role: m.role,
           content: m.content,
+          images: m.images || [],
           createdAt: m.createdAt,
         }))
       );
@@ -154,6 +156,7 @@ export default function ChatDemo({ company }) {
           id: `${i}-${m.role}`,
           role: m.role,
           content: m.content,
+          images: m.images || [],
           createdAt: m.createdAt,
         }))
       );
@@ -284,12 +287,31 @@ export default function ChatDemo({ company }) {
                   khoảng 15 triệu"
                 </p>
               )}
-              {messages.map((m) => (
-                <div key={m.id} className={`bubble-row ${m.role}`}>
-                  <div className={`bubble ${m.role}`}>{m.content}</div>
-                  <span className="bubble-time">{formatTime(m.createdAt)}</span>
+              {messages.map((m, i) => {
+                const isLastOfGroup = i === messages.length - 1 || messages[i + 1].role !== m.role;
+                return (
+                <div key={m.id} className={`bubble-row ${m.role} ${isLastOfGroup ? "" : "grouped"}`}>
+                  <div className={`bubble ${m.role}`}>
+                    {m.content}
+                    {m.images?.length > 0 && (
+                      <div className="bubble-images">
+                        {m.images.map((img, i) => (
+                          <a key={i} href={img.url} target="_blank" rel="noreferrer">
+                            <img
+                              src={img.url}
+                              alt={img.name || ""}
+                              className="bubble-image"
+                              onError={(e) => (e.target.style.display = "none")}
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {isLastOfGroup && <span className="bubble-time">{formatTime(m.createdAt)}</span>}
                 </div>
-              ))}
+                );
+              })}
               {loading && <div className="bubble assistant loading">AI đang tra dữ liệu và soạn tin...</div>}
             </div>
 

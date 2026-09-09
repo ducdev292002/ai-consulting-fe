@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import ChatDemo from "./components/ChatDemo";
 import ProductManager from "./components/ProductManager";
 import KnowledgeManager from "./components/KnowledgeManager";
-import CompetitorManager from "./components/CompetitorManager";
 import ScriptManager from "./components/ScriptManager";
 import CompanyManager from "./components/CompanyManager";
 import OrdersPanel from "./components/OrdersPanel";
@@ -17,22 +16,21 @@ const TABS = [
 ];
 
 const KNOWLEDGE_SECTIONS = [
-  { id: "products", label: "Sản phẩm & tài liệu" },
-  { id: "general", label: "Tri thức chung" },
-  { id: "competitors", label: "Giá đối thủ" },
+  { id: "products", label: "Sản phẩm" },
+  { id: "general", label: "Tài liệu & tri thức" },
   { id: "scripts", label: "Kịch bản" },
 ];
 
 export default function App() {
   const [tab, setTab] = useState("chat");
   const [section, setSection] = useState("products");
+  const [knowledgeProductFilter, setKnowledgeProductFilter] = useState(null);
 
   const [companies, setCompanies] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
   const [products, setProducts] = useState([]);
   const [docs, setDocs] = useState([]);
-  const [competitors, setCompetitors] = useState([]);
   const [scripts, setScripts] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -53,21 +51,14 @@ export default function App() {
     if (!selectedId) {
       setProducts([]);
       setDocs([]);
-      setCompetitors([]);
       setScripts([]);
       return;
     }
     setLoadError("");
-    Promise.all([
-      api.listProducts(selectedId),
-      api.listKnowledge(selectedId),
-      api.listCompetitors(selectedId),
-      api.listScripts(selectedId),
-    ])
-      .then(([p, k, c, s]) => {
+    Promise.all([api.listProducts(selectedId), api.listKnowledge(selectedId), api.listScripts(selectedId)])
+      .then(([p, k, s]) => {
         setProducts(p);
         setDocs(k);
-        setCompetitors(c);
         setScripts(s);
       })
       .catch((err) => setLoadError(err.message));
@@ -102,6 +93,10 @@ export default function App() {
         ))}
       </nav>
 
+      {/* Các tab bên dưới KHÔNG unmount khi chuyển qua lại — chỉ ẩn/hiện bằng thuộc tính
+          "hidden". Nhờ vậy các tác vụ chạy lâu (quét web, tách kịch bản...) vẫn tiếp tục
+          và giữ nguyên kết quả dù bạn chuyển sang tab khác rồi quay lại, thay vì bị mất vì
+          component bị huỷ. Đổi công ty vẫn reset đúng nhờ key={company._id}. */}
       <main className="tab-content">
         {loading && <p className="empty">Đang tải dữ liệu từ server...</p>}
         {loadError && (
@@ -112,56 +107,73 @@ export default function App() {
 
         {!loading && (
           <>
-            {tab === "companies" && (
+            <div hidden={tab !== "companies"}>
               <CompanyManager
                 companies={companies}
                 setCompanies={setCompanies}
                 selectedId={selectedId}
                 setSelectedId={setSelectedId}
               />
-            )}
+            </div>
 
-            {tab !== "companies" && !company && (
+            {!company && tab !== "companies" && (
               <p className="empty">
                 Chưa chọn công ty. Chọn ở góc trên phải, hoặc tạo mới ở tab "Công ty".
               </p>
             )}
 
-            {tab === "chat" && company && <ChatDemo company={company} />}
-            {tab === "orders" && company && <OrdersPanel company={company} />}
-
-            {tab === "knowledge" && company && (
-              <div>
-                <div className="sub-tab-bar">
-                  {KNOWLEDGE_SECTIONS.map((s) => (
-                    <button
-                      key={s.id}
-                      className={section === s.id ? "active" : ""}
-                      onClick={() => setSection(s.id)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+            {company && (
+              <>
+                <div hidden={tab !== "chat"}>
+                  <ChatDemo key={company._id} company={company} />
                 </div>
 
-                {section === "products" && (
-                  <ProductManager company={company} products={products} setProducts={setProducts} />
-                )}
-                {section === "general" && (
-                  <KnowledgeManager company={company} docs={docs} setDocs={setDocs} />
-                )}
-                {section === "competitors" && (
-                  <CompetitorManager
-                    company={company}
-                    competitors={competitors}
-                    setCompetitors={setCompetitors}
-                    products={products}
-                  />
-                )}
-                {section === "scripts" && (
-                  <ScriptManager company={company} scripts={scripts} setScripts={setScripts} />
-                )}
-              </div>
+                <div hidden={tab !== "orders"}>
+                  <OrdersPanel key={company._id} company={company} />
+                </div>
+
+                <div hidden={tab !== "knowledge"}>
+                  <div className="sub-tab-bar">
+                    {KNOWLEDGE_SECTIONS.map((s) => (
+                      <button
+                        key={s.id}
+                        className={section === s.id ? "active" : ""}
+                        onClick={() => setSection(s.id)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div hidden={section !== "products"}>
+                    <ProductManager
+                      key={company._id}
+                      company={company}
+                      products={products}
+                      setProducts={setProducts}
+                      docs={docs}
+                      onViewDocs={(productId) => {
+                        setKnowledgeProductFilter(productId);
+                        setSection("general");
+                      }}
+                    />
+                  </div>
+                  <div hidden={section !== "general"}>
+                    <KnowledgeManager
+                      key={company._id}
+                      company={company}
+                      docs={docs}
+                      setDocs={setDocs}
+                      products={products}
+                      filterProductId={knowledgeProductFilter}
+                      onClearFilter={() => setKnowledgeProductFilter(null)}
+                    />
+                  </div>
+                  <div hidden={section !== "scripts"}>
+                    <ScriptManager key={company._id} company={company} scripts={scripts} setScripts={setScripts} />
+                  </div>
+                </div>
+              </>
             )}
           </>
         )}
@@ -170,8 +182,8 @@ export default function App() {
       <footer className="app-footer">
         <p>
           Mỗi công ty có tri thức riêng biệt. AI trả lời bằng cách gọi tool (tìm sản phẩm, đọc tài liệu
-          sản phẩm, so sánh giá đối thủ, tra tri thức qua embedding, tìm kiếm web) — không nhồi toàn bộ
-          dữ liệu vào prompt. OPENAI_API_KEY chỉ nằm trong .env của server.
+          sản phẩm, tra tri thức qua embedding, tìm kiếm web) — không nhồi toàn bộ dữ liệu vào prompt.
+          OPENAI_API_KEY chỉ nằm trong .env của server.
         </p>
       </footer>
     </div>

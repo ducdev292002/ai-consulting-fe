@@ -137,7 +137,7 @@ export default function CompanyManager({ companies, setCompanies, selectedId, se
                 {selectedId === c._id && <span className="tag">đang chọn</span>}
               </div>
               <div className="card-actions">
-                <button type="button" onClick={() => setSelectedId(c._id)}>
+                <button type="button" className="btn-primary" onClick={() => setSelectedId(c._id)}>
                   Chọn
                 </button>
                 <button type="button" onClick={() => edit(c)}>

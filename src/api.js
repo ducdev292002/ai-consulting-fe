@@ -55,14 +55,16 @@ export const api = {
     return upload("/knowledge/upload", formData);
   },
   knowledgeFromUrl: (body) => request("/knowledge/from-url", { method: "POST", body: JSON.stringify(body) }),
-
-  listCompetitors: (companyId) => request(`/competitors?${query({ companyId })}`),
-  createCompetitor: (body) => request("/competitors", { method: "POST", body: JSON.stringify(body) }),
-  updateCompetitor: (id, body) => request(`/competitors/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-  deleteCompetitor: (id) => request(`/competitors/${id}`, { method: "DELETE" }),
+  crawlKnowledge: (body) => request("/knowledge/crawl", { method: "POST", body: JSON.stringify(body) }),
 
   listScripts: (companyId) => request(`/scripts?${query({ companyId })}`),
   createScript: (body) => request("/scripts", { method: "POST", body: JSON.stringify(body) }),
+  extractScripts: (file, companyId) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("companyId", companyId);
+    return upload("/scripts/extract", formData);
+  },
   updateScript: (id, body) => request(`/scripts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteScript: (id) => request(`/scripts/${id}`, { method: "DELETE" }),
 
@@ -76,6 +78,7 @@ export const api = {
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
 
   sendChat: (body) => request("/chat", { method: "POST", body: JSON.stringify(body) }),
+  listConversations: (companyId) => request(`/conversations/list?${query({ companyId })}`),
   getConversation: (companyId, customerKey) =>
     request(`/conversations?${query({ companyId, customerKey })}`),
   clearConversation: (companyId, customerKey) =>

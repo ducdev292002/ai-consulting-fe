@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "../api";
 
 const empty = {
@@ -24,20 +24,11 @@ const toList = (text) =>
 
 const money = (n) => (typeof n === "number" && n > 0 ? n.toLocaleString("vi-VN") + "đ" : "—");
 
-export default function ProductManager({ company, products, setProducts }) {
+export default function ProductManager({ company, products, setProducts, docs, onViewDocs }) {
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [openProductId, setOpenProductId] = useState(null);
-  const [docsByProduct, setDocsByProduct] = useState({});
-  const [docBusy, setDocBusy] = useState(false);
-  const [docError, setDocError] = useState("");
-
-  useEffect(() => {
-    setOpenProductId(null);
-    setDocsByProduct({});
-  }, [company._id]);
 
   const resetForm = () => {
     setForm(empty);
@@ -111,54 +102,7 @@ export default function ProductManager({ company, products, setProducts }) {
     }
   };
 
-  const toggleDocs = async (productId) => {
-    if (openProductId === productId) {
-      setOpenProductId(null);
-      return;
-    }
-    setOpenProductId(productId);
-    setDocError("");
-    if (docsByProduct[productId]) return;
-    try {
-      const docs = await api.listKnowledge(company._id, productId);
-      setDocsByProduct((map) => ({ ...map, [productId]: docs }));
-    } catch (err) {
-      setDocError(err.message);
-    }
-  };
-
-  const uploadDoc = async (productId, file) => {
-    setDocBusy(true);
-    setDocError("");
-    try {
-      const result = await api.uploadKnowledge(file, {
-        companyId: company._id,
-        productId,
-        source: "product",
-      });
-      setDocsByProduct((map) => ({
-        ...map,
-        [productId]: [...(map[productId] || []), result.doc],
-      }));
-      if (result.indexError) setDocError(`Đã lưu nhưng chưa tạo được embedding: ${result.indexError}`);
-    } catch (err) {
-      setDocError(err.message);
-    } finally {
-      setDocBusy(false);
-    }
-  };
-
-  const deleteDoc = async (productId, docId) => {
-    try {
-      await api.deleteKnowledge(docId);
-      setDocsByProduct((map) => ({
-        ...map,
-        [productId]: (map[productId] || []).filter((d) => d._id !== docId),
-      }));
-    } catch (err) {
-      setDocError(err.message);
-    }
-  };
+  const docCount = (productId) => docs.filter((d) => d.productId === productId).length;
 
   return (
     <div className="manager-layout">
@@ -283,8 +227,8 @@ export default function ProductManager({ company, products, setProducts }) {
                 {p.category && <span className="tag">{p.category}</span>}
               </div>
               <div className="card-actions">
-                <button type="button" onClick={() => toggleDocs(p._id)}>
-                  Tài liệu
+                <button type="button" onClick={() => onViewDocs(p._id)}>
+                  Tài liệu ({docCount(p._id)})
                 </button>
                 <button type="button" onClick={() => edit(p)}>
                   Sửa
@@ -312,42 +256,6 @@ export default function ProductManager({ company, products, setProducts }) {
               <p className="fit good">Phù hợp: {p.bestFor.join(", ")}</p>
             )}
             {p.notFor?.length > 0 && <p className="fit bad">Không phù hợp: {p.notFor.join(", ")}</p>}
-
-            {openProductId === p._id && (
-              <div className="doc-drawer">
-                <div className="doc-drawer-head">
-                  <strong>Tài liệu riêng của sản phẩm này</strong>
-                  <label className="file-btn">
-                    {docBusy ? "Đang xử lý..." : "+ Tải file (PDF/DOCX/TXT)"}
-                    <input
-                      type="file"
-                      accept=".pdf,.docx,.txt,.md"
-                      disabled={docBusy}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = "";
-                        if (file) uploadDoc(p._id, file);
-                      }}
-                    />
-                  </label>
-                </div>
-                {docError && <p className="chat-error">{docError}</p>}
-                {(docsByProduct[p._id] || []).length === 0 && (
-                  <p className="empty">Chưa có tài liệu riêng.</p>
-                )}
-                {(docsByProduct[p._id] || []).map((d) => (
-                  <div key={d._id} className="doc-row">
-                    <span>
-                      {d.title}
-                      <span className="meta"> · {d.chunkCount || 0} đoạn đã index</span>
-                    </span>
-                    <button type="button" className="danger" onClick={() => deleteDoc(p._id, d._id)}>
-                      Xoá
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         ))}
       </div>

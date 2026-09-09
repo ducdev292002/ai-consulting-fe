@@ -13,7 +13,6 @@ const STAGE_LABELS = {
 const TOOL_LABELS = {
   searchProducts: "Tìm sản phẩm",
   getProductDetail: "Đọc tài liệu sản phẩm",
-  compareWithMarket: "So sánh giá đối thủ",
   searchCompanyKnowledge: "Tra tri thức công ty",
   updateLead: "Cập nhật phiếu khách",
   createOrder: "Tạo đơn nháp",
@@ -22,8 +21,38 @@ const TOOL_LABELS = {
 
 const money = (n) => (typeof n === "number" ? n.toLocaleString("vi-VN") + "đ" : "—");
 
+const initials = (text) =>
+  (text || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+const timeFmt = new Intl.DateTimeFormat("vi-VN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "2-digit",
+  month: "2-digit",
+});
+
+const formatTime = (iso) => {
+  if (!iso) return "";
+  try {
+    return timeFmt.format(new Date(iso));
+  } catch {
+    return "";
+  }
+};
+
 export default function ChatDemo({ company }) {
-  const [customerKey, setCustomerKey] = useState("0901234567");
+  const [conversations, setConversations] = useState([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [customerKey, setCustomerKey] = useState("");
+  const [newKeyDraft, setNewKeyDraft] = useState("");
+  const [showNewChat, setShowNewChat] = useState(false);
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,9 +66,35 @@ export default function ChatDemo({ company }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  const loadCustomer = async (key) => {
+  const refreshList = async () => {
+    if (!company) return;
+    setLoadingList(true);
+    try {
+      const list = await api.listConversations(company._id);
+      setConversations(list);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    setCustomerKey("");
+    setMessages([]);
+    setLead(null);
+    setOrder(null);
+    setToolCalls([]);
+    setShowNewChat(false);
+    refreshList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company?._id]);
+
+  const openConversation = async (key) => {
+    if (!key.trim() || !company) return;
     const trimmed = key.trim();
-    if (!trimmed || !company) return;
+    setCustomerKey(trimmed);
+    setShowNewChat(false);
     setError("");
     try {
       const [conversation, currentLead, orders] = await Promise.all([
@@ -52,6 +107,7 @@ export default function ChatDemo({ company }) {
           id: `${i}-${m.role}`,
           role: m.role,
           content: m.content,
+          createdAt: m.createdAt,
         }))
       );
       setLead(currentLead);
@@ -62,25 +118,28 @@ export default function ChatDemo({ company }) {
     }
   };
 
-  useEffect(() => {
-    setMessages([]);
-    setLead(null);
-    setOrder(null);
-    setToolCalls([]);
-  }, [company?._id]);
+  const startNewConversation = () => {
+    const key = newKeyDraft.trim();
+    if (!key) return;
+    setNewKeyDraft("");
+    openConversation(key);
+  };
 
   const sendMessage = async () => {
     const text = input.trim();
     const key = customerKey.trim();
     if (!text || loading) return;
     if (!key) {
-      setError("Cần nhập định danh khách (SĐT hoặc tên) trước khi chat.");
+      setError("Chọn hoặc tạo một cuộc hội thoại trước khi nhắn.");
       return;
     }
 
     setError("");
     setLoading(true);
-    setMessages((list) => [...list, { id: crypto.randomUUID(), role: "user", content: text }]);
+    setMessages((list) => [
+      ...list,
+      { id: crypto.randomUUID(), role: "user", content: text, createdAt: new Date().toISOString() },
+    ]);
     setInput("");
 
     try {
@@ -95,11 +154,13 @@ export default function ChatDemo({ company }) {
           id: `${i}-${m.role}`,
           role: m.role,
           content: m.content,
+          createdAt: m.createdAt,
         }))
       );
       setLead(result.lead);
       if (result.order) setOrder(result.order);
       setToolCalls(result.toolCalls || []);
+      refreshList();
     } catch (err) {
       setError(err.message || "Có lỗi xảy ra khi gọi máy chủ.");
     } finally {
@@ -107,18 +168,21 @@ export default function ChatDemo({ company }) {
     }
   };
 
-  const clearAll = async () => {
-    const key = customerKey.trim();
-    setMessages([]);
-    setToolCalls([]);
-    if (!key) return;
+  const deleteConversation = async (key, e) => {
+    e.stopPropagation();
+    if (!confirm(`Xoá toàn bộ hội thoại với "${key}"?`)) return;
     try {
       await Promise.all([
         api.clearConversation(company._id, key),
         api.deleteLead(company._id, key),
       ]);
-      setLead(null);
-      setOrder(null);
+      if (customerKey === key) {
+        setCustomerKey("");
+        setMessages([]);
+        setLead(null);
+        setOrder(null);
+      }
+      refreshList();
     } catch (err) {
       setError(err.message);
     }
@@ -141,57 +205,110 @@ export default function ChatDemo({ company }) {
   ];
 
   return (
-    <div className="chat-layout">
-      <div className="chat-panel">
-        <div className="chat-toolbar">
-          <label>
-            Định danh khách (SĐT/tên):
+    <div className="chat-layout-3col">
+      <div className="conv-list">
+        <div className="conv-list-head">
+          <strong>Hội thoại</strong>
+          <button type="button" className="btn-primary" onClick={() => setShowNewChat((v) => !v)}>
+            + Mới
+          </button>
+        </div>
+
+        {showNewChat && (
+          <div className="conv-new-box">
             <input
               type="text"
-              value={customerKey}
-              placeholder="VD: 0901234567"
-              onChange={(e) => setCustomerKey(e.target.value)}
-              onBlur={(e) => loadCustomer(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && loadCustomer(customerKey)}
+              autoFocus
+              placeholder="SĐT hoặc tên khách mới..."
+              value={newKeyDraft}
+              onChange={(e) => setNewKeyDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && startNewConversation()}
             />
-          </label>
-          <button type="button" onClick={() => loadCustomer(customerKey)}>
-            Tải lại khách
-          </button>
-          <button type="button" className="danger" onClick={clearAll}>
-            Xoá hội thoại + phiếu
-          </button>
-        </div>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={startNewConversation}
+              disabled={!newKeyDraft.trim()}
+            >
+              Bắt đầu
+            </button>
+          </div>
+        )}
 
-        <div className="chat-messages" ref={scrollRef}>
-          {messages.length === 0 && (
-            <p className="empty">
-              Đóng vai khách hàng và nhắn thử. VD: "mình muốn mua sofa, nhà có bé 3 tuổi, ngân sách
-              khoảng 15 triệu"
-            </p>
+        <div className="conv-items">
+          {loadingList && <p className="empty">Đang tải...</p>}
+          {!loadingList && conversations.length === 0 && (
+            <p className="empty">Chưa có hội thoại nào. Bấm "+ Mới" để bắt đầu.</p>
           )}
-          {messages.map((m) => (
-            <div key={m.id} className={`bubble ${m.role}`}>
-              {m.content}
+          {conversations.map((c) => (
+            <div
+              key={c.customerKey}
+              className={`conv-item ${customerKey === c.customerKey ? "active" : ""}`}
+              onClick={() => openConversation(c.customerKey)}
+            >
+              <div className="conv-avatar">{initials(c.customerKey)}</div>
+              <div className="conv-info">
+                <div className="conv-top-row">
+                  <span className="conv-name">{c.customerKey}</span>
+                  <span className="conv-time">{formatTime(c.lastMessageAt)}</span>
+                </div>
+                <div className="conv-preview">
+                  {c.lastMessageRole === "user" ? "" : "Bot: "}
+                  {c.lastMessage.slice(0, 40)}
+                </div>
+                {c.stage && <span className="conv-stage">{STAGE_LABELS[c.stage] || c.stage}</span>}
+              </div>
+              <button type="button" className="conv-delete" onClick={(e) => deleteConversation(c.customerKey, e)}>
+                ×
+              </button>
             </div>
           ))}
-          {loading && <div className="bubble assistant loading">AI đang tra dữ liệu và soạn tin...</div>}
         </div>
+      </div>
 
-        {error && <div className="chat-error">{error}</div>}
+      <div className="chat-panel">
+        {!customerKey ? (
+          <div className="chat-empty-state">
+            <p className="empty">Chọn một hội thoại bên trái, hoặc bấm "+ Mới" để bắt đầu chat với khách mới.</p>
+          </div>
+        ) : (
+          <>
+            <div className="chat-toolbar">
+              <strong>Đang chat với: {customerKey}</strong>
+            </div>
 
-        <div className="chat-input-row">
-          <textarea
-            rows={2}
-            placeholder="Nhập tin nhắn khách hàng..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-          />
-          <button type="button" onClick={sendMessage} disabled={loading || !input.trim()}>
-            Gửi
-          </button>
-        </div>
+            <div className="chat-messages" ref={scrollRef}>
+              {messages.length === 0 && (
+                <p className="empty">
+                  Đóng vai khách hàng và nhắn thử. VD: "mình muốn mua sofa, nhà có bé 3 tuổi, ngân sách
+                  khoảng 15 triệu"
+                </p>
+              )}
+              {messages.map((m) => (
+                <div key={m.id} className={`bubble-row ${m.role}`}>
+                  <div className={`bubble ${m.role}`}>{m.content}</div>
+                  <span className="bubble-time">{formatTime(m.createdAt)}</span>
+                </div>
+              ))}
+              {loading && <div className="bubble assistant loading">AI đang tra dữ liệu và soạn tin...</div>}
+            </div>
+
+            {error && <div className="chat-error">{error}</div>}
+
+            <div className="chat-input-row">
+              <textarea
+                rows={2}
+                placeholder="Nhập tin nhắn khách hàng..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+              />
+              <button type="button" className="btn-primary" onClick={sendMessage} disabled={loading || !input.trim()}>
+                Gửi
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="chat-side">
@@ -239,9 +356,7 @@ export default function ChatDemo({ company }) {
           {toolCalls.map((t, i) => (
             <div key={i} className="tool-line">
               <span className="tool-name">{TOOL_LABELS[t.name] || t.name}</span>
-              {Object.keys(t.args || {}).length > 0 && (
-                <code>{JSON.stringify(t.args)}</code>
-              )}
+              {Object.keys(t.args || {}).length > 0 && <code>{JSON.stringify(t.args)}</code>}
             </div>
           ))}
         </div>

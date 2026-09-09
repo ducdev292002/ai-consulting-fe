@@ -66,7 +66,7 @@ export default function OrdersPanel({ company }) {
               </div>
               <div className="card-actions">
                 {o.status === "draft" && (
-                  <button type="button" onClick={() => confirm(o._id)}>
+                  <button type="button" className="btn-primary" onClick={() => confirm(o._id)}>
                     Xác nhận đơn
                   </button>
                 )}

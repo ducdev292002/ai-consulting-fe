@@ -13,6 +13,7 @@ async function request(path, options = {}) {
   if (!res.ok) {
     throw new Error(data?.error || `Lỗi API (HTTP ${res.status})`);
   }
+
   return data;
 }
 

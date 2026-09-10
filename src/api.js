@@ -139,6 +139,8 @@ export const api = {
   updateLead: (companyId, customerKey, fields) =>
     request("/leads", { method: "PATCH", body: JSON.stringify({ companyId, customerKey, ...fields }) }),
 
+  getStats: (companyId) => request(`/stats?${query({ companyId })}`),
+
   listOrders: (companyId, customerKey) => request(`/orders?${query({ companyId, customerKey })}`),
   updateOrder: (id, body) => request(`/orders/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),

@@ -5,14 +5,16 @@ import KnowledgeManager from "./components/KnowledgeManager";
 import ScriptManager from "./components/ScriptManager";
 import CompanyManager from "./components/CompanyManager";
 import OrdersPanel from "./components/OrdersPanel";
+import StatsDashboard from "./components/StatsDashboard";
 import { api } from "./api";
 import "./App.css";
 
 const TABS = [
-  { id: "chat", label: "Demo tư vấn" },
-  { id: "knowledge", label: "Hệ thống tri thức" },
-  { id: "orders", label: "Đơn hàng & Khách" },
-  { id: "companies", label: "Công ty" },
+  { id: "chat", label: "Demo tư vấn", icon: "💬" },
+  { id: "knowledge", label: "Hệ thống tri thức", icon: "📚" },
+  { id: "orders", label: "Đơn hàng & Khách", icon: "🧾" },
+  { id: "stats", label: "Thống kê", icon: "📊" },
+  { id: "companies", label: "Công ty", icon: "🏢" },
 ];
 
 const KNOWLEDGE_SECTIONS = [
@@ -23,6 +25,7 @@ const KNOWLEDGE_SECTIONS = [
 
 export default function App() {
   const [tab, setTab] = useState("chat");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [section, setSection] = useState("products");
   const [knowledgeProductFilter, setKnowledgeProductFilter] = useState(null);
 
@@ -85,99 +88,119 @@ export default function App() {
         </div>
       </header>
 
-      <nav className="tab-bar">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-            {t.label}
+      <div className="app-body">
+        <nav className={`sidebar-nav ${sidebarCollapsed ? "collapsed" : ""}`}>
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+          >
+            {sidebarCollapsed ? "»" : "«"}
           </button>
-        ))}
-      </nav>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={tab === t.id ? "active" : ""}
+              onClick={() => setTab(t.id)}
+              title={t.label}
+            >
+              <span className="sidebar-icon">{t.icon}</span>
+              <span className="sidebar-label">{t.label}</span>
+            </button>
+          ))}
+        </nav>
 
-      {/* Các tab bên dưới KHÔNG unmount khi chuyển qua lại — chỉ ẩn/hiện bằng thuộc tính
-          "hidden". Nhờ vậy các tác vụ chạy lâu (quét web, tách kịch bản...) vẫn tiếp tục
-          và giữ nguyên kết quả dù bạn chuyển sang tab khác rồi quay lại, thay vì bị mất vì
-          component bị huỷ. Đổi công ty vẫn reset đúng nhờ key={company._id}. */}
-      <main className="tab-content">
-        {loading && <p className="empty">Đang tải dữ liệu từ server...</p>}
-        {loadError && (
-          <div className="chat-error">
-            Lỗi: {loadError}. Kiểm tra backend đã chạy tại đúng VITE_API_URL chưa.
-          </div>
-        )}
-
-        {!loading && (
-          <>
-            <div hidden={tab !== "companies"}>
-              <CompanyManager
-                companies={companies}
-                setCompanies={setCompanies}
-                selectedId={selectedId}
-                setSelectedId={setSelectedId}
-              />
+        {/* Các tab bên dưới KHÔNG unmount khi chuyển qua lại — chỉ ẩn/hiện bằng thuộc tính
+            "hidden". Nhờ vậy các tác vụ chạy lâu (quét web, tách kịch bản...) vẫn tiếp tục
+            và giữ nguyên kết quả dù bạn chuyển sang tab khác rồi quay lại, thay vì bị mất vì
+            component bị huỷ. Đổi công ty vẫn reset đúng nhờ key={company._id}. */}
+        <main className="tab-content">
+          {loading && <p className="empty">Đang tải dữ liệu từ server...</p>}
+          {loadError && (
+            <div className="chat-error">
+              Lỗi: {loadError}. Kiểm tra backend đã chạy tại đúng VITE_API_URL chưa.
             </div>
+          )}
 
-            {!company && tab !== "companies" && (
-              <p className="empty">
-                Chưa chọn công ty. Chọn ở góc trên phải, hoặc tạo mới ở tab "Công ty".
-              </p>
-            )}
+          {!loading && (
+            <>
+              <div hidden={tab !== "companies"}>
+                <CompanyManager
+                  companies={companies}
+                  setCompanies={setCompanies}
+                  selectedId={selectedId}
+                  setSelectedId={setSelectedId}
+                />
+              </div>
 
-            {company && (
-              <>
-                <div hidden={tab !== "chat"}>
-                  <ChatDemo key={company._id} company={company} />
-                </div>
+              {!company && tab !== "companies" && (
+                <p className="empty">
+                  Chưa chọn công ty. Chọn ở góc trên phải, hoặc tạo mới ở tab "Công ty".
+                </p>
+              )}
 
-                <div hidden={tab !== "orders"}>
-                  <OrdersPanel key={company._id} company={company} />
-                </div>
-
-                <div hidden={tab !== "knowledge"}>
-                  <div className="sub-tab-bar">
-                    {KNOWLEDGE_SECTIONS.map((s) => (
-                      <button
-                        key={s.id}
-                        className={section === s.id ? "active" : ""}
-                        onClick={() => setSection(s.id)}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
+              {company && (
+                <>
+                  <div hidden={tab !== "chat"}>
+                    <ChatDemo key={company._id} company={company} />
                   </div>
 
-                  <div hidden={section !== "products"}>
-                    <ProductManager
-                      key={company._id}
-                      company={company}
-                      products={products}
-                      setProducts={setProducts}
-                      docs={docs}
-                      onViewDocs={(productId) => {
-                        setKnowledgeProductFilter(productId);
-                        setSection("general");
-                      }}
-                    />
+                  <div hidden={tab !== "orders"}>
+                    <OrdersPanel key={company._id} company={company} />
                   </div>
-                  <div hidden={section !== "general"}>
-                    <KnowledgeManager
-                      key={company._id}
-                      company={company}
-                      docs={docs}
-                      setDocs={setDocs}
-                      products={products}
-                      filterProductId={knowledgeProductFilter}
-                      onClearFilter={() => setKnowledgeProductFilter(null)}
-                    />
+
+                  <div hidden={tab !== "stats"}>
+                    <StatsDashboard key={company._id} company={company} />
                   </div>
-                  <div hidden={section !== "scripts"}>
-                    <ScriptManager key={company._id} company={company} scripts={scripts} setScripts={setScripts} />
+
+                  <div hidden={tab !== "knowledge"}>
+                    <div className="sub-tab-bar">
+                      {KNOWLEDGE_SECTIONS.map((s) => (
+                        <button
+                          key={s.id}
+                          className={section === s.id ? "active" : ""}
+                          onClick={() => setSection(s.id)}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div hidden={section !== "products"}>
+                      <ProductManager
+                        key={company._id}
+                        company={company}
+                        products={products}
+                        setProducts={setProducts}
+                        docs={docs}
+                        onViewDocs={(productId) => {
+                          setKnowledgeProductFilter(productId);
+                          setSection("general");
+                        }}
+                      />
+                    </div>
+                    <div hidden={section !== "general"}>
+                      <KnowledgeManager
+                        key={company._id}
+                        company={company}
+                        docs={docs}
+                        setDocs={setDocs}
+                        products={products}
+                        filterProductId={knowledgeProductFilter}
+                        onClearFilter={() => setKnowledgeProductFilter(null)}
+                      />
+                    </div>
+                    <div hidden={section !== "scripts"}>
+                      <ScriptManager key={company._id} company={company} scripts={scripts} setScripts={setScripts} />
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </>
-        )}
-      </main>
+                </>
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       <footer className="app-footer">
         <p>

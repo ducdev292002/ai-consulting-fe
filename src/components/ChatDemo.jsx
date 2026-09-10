@@ -72,6 +72,9 @@ export default function ChatDemo({ company }) {
   const [summaryLoading, setSummaryLoading] = useState(false);
   // Gợi ý câu trả lời do AI soạn sẵn mỗi khi khách nhắn đến lúc nhân viên đang xử lý — nhân viên
   // xem, có thể dùng luôn hoặc chỉnh sửa trước khi gửi, AI không tự gửi thay.
+  const [editingLead, setEditingLead] = useState(false);
+  const [leadForm, setLeadForm] = useState(null);
+  const [savingLead, setSavingLead] = useState(false);
   const [suggestion, setSuggestion] = useState("");
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const scrollRef = useRef(null);
@@ -103,6 +106,8 @@ export default function ChatDemo({ company }) {
     setSendAs("customer");
     setSummary("");
     setSuggestion("");
+    setEditingLead(false);
+    setLeadForm(null);
     setShowNewChat(false);
     refreshList();
     if (company) {
@@ -157,6 +162,8 @@ export default function ChatDemo({ company }) {
       } else {
         setSuggestion("");
       }
+      setEditingLead(false);
+      setLeadForm(null);
     } catch (err) {
       setError(err.message);
     }
@@ -351,6 +358,8 @@ export default function ChatDemo({ company }) {
         setSendAs("customer");
         setSummary("");
         setSuggestion("");
+        setEditingLead(false);
+        setLeadForm(null);
       }
       refreshList();
     } catch (err) {
@@ -373,6 +382,51 @@ export default function ChatDemo({ company }) {
     ["Số điện thoại", lead?.phone],
     ["Khu vực", lead?.area],
   ];
+
+  const startEditLead = () => {
+    setLeadForm({
+      needType: lead?.needType || "",
+      budget: lead?.budget || "",
+      spaceInfo: lead?.spaceInfo || "",
+      concerns: lead?.concerns?.join(", ") || "",
+      phone: lead?.phone || "",
+      area: lead?.area || "",
+    });
+    setEditingLead(true);
+  };
+
+  const cancelEditLead = () => {
+    setEditingLead(false);
+    setLeadForm(null);
+  };
+
+  const saveLeadEdits = async () => {
+    const key = customerKey.trim();
+    if (!key || !leadForm) return;
+    setSavingLead(true);
+    setError("");
+    try {
+      const updated = await api.updateLead(company._id, key, {
+        needType: leadForm.needType,
+        budget: leadForm.budget,
+        spaceInfo: leadForm.spaceInfo,
+        concerns: leadForm.concerns
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        phone: leadForm.phone,
+        area: leadForm.area,
+      });
+      setLead(updated);
+      refreshList();
+      setEditingLead(false);
+      setLeadForm(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingLead(false);
+    }
+  };
 
   return (
     <div className="chat-layout-3col">
@@ -591,18 +645,80 @@ export default function ChatDemo({ company }) {
         </div>
 
         <div className="side-box">
-          <h4>Phiếu thông tin khách</h4>
+          <div className="side-box-head">
+            <h4>Phiếu thông tin khách</h4>
+            {!editingLead && customerKey && (
+              <button type="button" className="btn-secondary btn-tiny" onClick={startEditLead}>
+                Sửa
+              </button>
+            )}
+          </div>
           <div className="stage-badge">{STAGE_LABELS[lead?.stage] || "Chưa bắt đầu"}</div>
-          <table className="slot-table">
-            <tbody>
-              {slots.map(([label, value]) => (
-                <tr key={label} className={value ? "filled" : "missing"}>
-                  <td>{label}</td>
-                  <td>{value || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {!editingLead ? (
+            <table className="slot-table">
+              <tbody>
+                {slots.map(([label, value]) => (
+                  <tr key={label} className={value ? "filled" : "missing"}>
+                    <td>{label}</td>
+                    <td>{value || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="lead-edit-form">
+              <label>
+                Nhu cầu
+                <input
+                  value={leadForm.needType}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, needType: e.target.value }))}
+                />
+              </label>
+              <label>
+                Ngân sách
+                <input
+                  value={leadForm.budget}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, budget: e.target.value }))}
+                />
+              </label>
+              <label>
+                Không gian
+                <input
+                  value={leadForm.spaceInfo}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, spaceInfo: e.target.value }))}
+                />
+              </label>
+              <label>
+                Lo ngại <span className="hint">(cách nhau bằng dấu phẩy)</span>
+                <input
+                  value={leadForm.concerns}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, concerns: e.target.value }))}
+                />
+              </label>
+              <label>
+                Số điện thoại
+                <input
+                  value={leadForm.phone}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </label>
+              <label>
+                Khu vực
+                <input
+                  value={leadForm.area}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, area: e.target.value }))}
+                />
+              </label>
+              <div className="form-actions">
+                <button type="button" className="btn-primary btn-tiny" onClick={saveLeadEdits} disabled={savingLead}>
+                  {savingLead ? "Đang lưu..." : "Lưu"}
+                </button>
+                <button type="button" className="btn-tiny" onClick={cancelEditLead} disabled={savingLead}>
+                  Huỷ
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="side-box">

@@ -135,6 +135,8 @@ export const api = {
   getLead: (companyId, customerKey) => request(`/leads?${query({ companyId, customerKey })}`),
   deleteLead: (companyId, customerKey) =>
     request(`/leads?${query({ companyId, customerKey })}`, { method: "DELETE" }),
+  updateLead: (companyId, customerKey, fields) =>
+    request("/leads", { method: "PATCH", body: JSON.stringify({ companyId, customerKey, ...fields }) }),
 
   listOrders: (companyId, customerKey) => request(`/orders?${query({ companyId, customerKey })}`),
   updateOrder: (id, body) => request(`/orders/${id}`, { method: "PUT", body: JSON.stringify(body) }),

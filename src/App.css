@@ -1585,6 +1585,31 @@ a.tag.tag-link:hover {
   color: var(--gray-300);
 }
 
+.lead-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lead-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.lead-edit-form input {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.lead-edit-form .form-actions {
+  margin-top: 4px;
+}
+
 .order-line {
   display: flex;
   justify-content: space-between;

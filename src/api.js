@@ -128,6 +128,8 @@ export const api = {
   },
   updateScript: (id, body) => request(`/scripts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteScript: (id) => request(`/scripts/${id}`, { method: "DELETE" }),
+  applyDefaultScripts: (companyId) =>
+    request("/scripts/apply-defaults", { method: "POST", body: JSON.stringify({ companyId }) }),
 
   listLeads: (companyId) => request(`/leads?${query({ companyId })}`),
   getLead: (companyId, customerKey) => request(`/leads?${query({ companyId, customerKey })}`),
@@ -139,9 +141,25 @@ export const api = {
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
 
   sendChat: (body) => request("/chat", { method: "POST", body: JSON.stringify(body) }),
+  resumeChat: (companyId, customerKey) =>
+    request("/chat/resume", { method: "POST", body: JSON.stringify({ companyId, customerKey }) }),
+  suggestReply: (companyId, customerKey, force = false) =>
+    request("/chat/suggest", { method: "POST", body: JSON.stringify({ companyId, customerKey, force }) }),
   listConversations: (companyId) => request(`/conversations/list?${query({ companyId })}`),
   getConversation: (companyId, customerKey) =>
     request(`/conversations?${query({ companyId, customerKey })}`),
   clearConversation: (companyId, customerKey) =>
     request(`/conversations?${query({ companyId, customerKey })}`, { method: "DELETE" }),
+  setConversationMode: (companyId, customerKey, mode) =>
+    request("/conversations/mode", { method: "PATCH", body: JSON.stringify({ companyId, customerKey, mode }) }),
+  sendStaffMessage: (companyId, customerKey, message, staffName) =>
+    request("/conversations/staff-message", {
+      method: "POST",
+      body: JSON.stringify({ companyId, customerKey, message, staffName }),
+    }),
+  summarizeConversation: (companyId, customerKey, force = false) =>
+    request("/conversations/summarize", {
+      method: "POST",
+      body: JSON.stringify({ companyId, customerKey, force }),
+    }),
 };

@@ -273,6 +273,16 @@ button.btn-primary:active:not(:disabled) {
   border-color: var(--color-primary-active);
 }
 
+button.btn-secondary {
+  background: var(--bg-surface);
+  border-color: var(--border-color-strong);
+  color: var(--text-primary);
+}
+
+button.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+
 button.danger {
   color: var(--color-danger-text);
   border-color: var(--color-danger-border);
@@ -1185,6 +1195,23 @@ a.tag.tag-link:hover {
   border-radius: var(--radius-full);
 }
 
+.conv-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.conv-mode-badge {
+  display: inline-block;
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-warning, #c47a00);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
 .conv-delete {
   position: absolute;
   top: 8px;
@@ -1234,6 +1261,22 @@ a.tag.tag-link:hover {
   padding: 4px 2px;
 }
 
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mode-indicator {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.mode-indicator.human {
+  color: var(--color-warning, #c47a00);
+}
+
 .chat-messages {
   flex: 1;
   min-height: 0;
@@ -1264,6 +1307,11 @@ a.tag.tag-link:hover {
   align-items: flex-start;
 }
 
+.bubble-row.staff {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
 .bubble-row.grouped {
   margin-bottom: -8px;
 }
@@ -1288,6 +1336,78 @@ a.tag.tag-link:hover {
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-bottom-left-radius: 3px;
+}
+
+.bubble.staff {
+  background: var(--color-warning-light, #fff1d6);
+  color: var(--text-primary);
+  border: 1px solid var(--color-warning, #c47a00);
+  border-bottom-left-radius: 3px;
+}
+
+.bubble-staff-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-warning, #c47a00);
+  margin-bottom: 2px;
+}
+
+.send-as-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.send-as-toggle button {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-strong);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.send-as-toggle button.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.ai-suggestion-box {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.ai-suggestion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 6px;
+}
+
+.ai-suggestion-text {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.staff-name-row {
+  margin-bottom: 6px;
+}
+
+.staff-name-row input {
+  width: 100%;
+  font-size: 0.82rem;
 }
 
 .bubble.loading {
@@ -1317,6 +1437,35 @@ a.tag.tag-link:hover {
   color: var(--text-muted);
   margin-top: 4px;
   padding: 0 4px;
+}
+
+.script-suggestion {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--bg-subtle);
+}
+
+.script-suggestion-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.script-suggestion-situation {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.script-suggestion-content {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  margin-top: 5px;
+  line-height: 1.4;
 }
 
 .chat-error {
@@ -1373,6 +1522,31 @@ a.tag.tag-link:hover {
   letter-spacing: 0.05em;
   color: var(--text-muted);
   font-weight: 700;
+}
+
+.side-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.side-box-head h4 {
+  margin: 0;
+}
+
+.btn-tiny {
+  padding: 3px 8px;
+  font-size: 0.7rem;
+}
+
+.summary-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .stage-badge {

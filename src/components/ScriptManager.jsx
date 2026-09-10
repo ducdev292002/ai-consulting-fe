@@ -40,6 +40,31 @@ export default function ScriptManager({ company, scripts, setScripts }) {
   const [page, setPage] = useState(1);
   const [view, setView] = useState("list"); // "list" | "flow"
 
+  const [applyingDefaults, setApplyingDefaults] = useState(false);
+  const [applyDefaultsMsg, setApplyDefaultsMsg] = useState("");
+
+  const applyDefaults = async () => {
+    setApplyingDefaults(true);
+    setApplyDefaultsMsg("");
+    setError("");
+    try {
+      const result = await api.applyDefaultScripts(company._id);
+      if (result.created > 0) {
+        const updated = await api.listScripts(company._id);
+        setScripts(updated);
+      }
+      setApplyDefaultsMsg(
+        result.created > 0
+          ? `Đã thêm ${result.created} kịch bản gợi ý riêng cho ${company.name}.`
+          : `${company.name} đã có sẵn các kịch bản này, không có gì để thêm.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setApplyingDefaults(false);
+    }
+  };
+
   const resetForm = () => {
     setForm(empty);
     setEditingId(null);
@@ -257,6 +282,21 @@ export default function ScriptManager({ company, scripts, setScripts }) {
 
       <div className="manager-layout">
         <div className="manager-form-column">
+          {scripts.length === 0 && (
+            <div className="manager-form upload-box default-scripts-cta">
+              <h3>{company.name} chưa có kịch bản nào</h3>
+              <p className="hint">
+                Dùng ngay bộ kịch bản gợi ý sẵn (khám phá nhu cầu, tư vấn, xử lý phản đối, chốt đơn...) để
+                AI có kịch bản chạy được luôn, không cần soạn từ đầu. Kịch bản này chỉ áp dụng riêng cho{" "}
+                {company.name}, không ảnh hưởng tới công ty khác — sau đó vẫn sửa/xoá tuỳ ý.
+              </p>
+              <button type="button" className="btn-primary" onClick={applyDefaults} disabled={applyingDefaults}>
+                {applyingDefaults ? "Đang thêm..." : `Dùng bộ kịch bản gợi ý cho ${company.name}`}
+              </button>
+              {applyDefaultsMsg && <p className="hint">{applyDefaultsMsg}</p>}
+            </div>
+          )}
+
           <div className="manager-form upload-box">
             <h3>Tải kịch bản từ file</h3>
             <p className="hint">
